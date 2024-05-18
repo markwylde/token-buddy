@@ -83,15 +83,17 @@ const App: React.FC = () => {
           }
         };
 
+        const values = section.inverse ? [...percentageValues].reverse() : percentageValues;
+
         for (let i = 0; i < 9; i++) {
-          const lightness = percentageValues[i];
+          const lightness = values[i];
           const variantColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
           css += `  --color-${section.name}-${i + 1}00: ${formatColor(variantColor)};\n`;
         }
 
         if (section.generateContrast) {
           for (let i = 0; i < 9; i++) {
-            const lightness = 100 - percentageValues[i];
+            const lightness = 100 - values[i];
             const contrastColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
             css += `  --color-${section.name}-contrast-${i + 1}00: ${formatColor(contrastColor)};\n`;
           }
@@ -207,6 +209,7 @@ const App: React.FC = () => {
                 return color.hex();
             }
           };
+          const values = section.inverse ? [...percentageValues].reverse() : percentageValues;
           return (
             <TableContainer key={index}>
               <Table>
@@ -220,7 +223,7 @@ const App: React.FC = () => {
                 </thead>
                 <tbody>
                   {Array.from({ length: 9 }, (_, i) => {
-                    const lightness = percentageValues[i];
+                    const lightness = values[i];
                     const variantColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
                     return (
                       <tr key={`${section.name}-${i}`}>
@@ -232,7 +235,7 @@ const App: React.FC = () => {
                         <td>
                           <input
                             type="number"
-                            value={percentageValues[i]}
+                            value={values[i]}
                             min="0"
                             max="100"
                             onChange={e => updatePercentageValue(i, parseFloat(e.target.value))}
@@ -243,7 +246,7 @@ const App: React.FC = () => {
                   })}
                   {section.generateContrast &&
                     Array.from({ length: 9 }, (_, i) => {
-                      const lightness = 100 - percentageValues[i];
+                      const lightness = 100 - values[i];
                       const contrastColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
                       return (
                         <tr key={`${section.name}-contrast-${i}`}>
@@ -255,7 +258,7 @@ const App: React.FC = () => {
                           <td>
                             <input
                               type="number"
-                              value={percentageValues[i]}
+                              value={values[i]}
                               min="0"
                               max="100"
                               onChange={e => updatePercentageValue(i, parseFloat(e.target.value))}
