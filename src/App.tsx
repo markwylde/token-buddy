@@ -1,6 +1,5 @@
 import chroma from 'chroma-js';
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
 import { Button, ColorSquare, Container, Inputs, Label, OutputContainer, Section, Table, TableContainer } from './components';
 
 interface SectionData {
@@ -29,9 +28,9 @@ const App: React.FC = () => {
     setSections([...sections, { name: '', color: '#ffffff', generateContrast: true, inverse: false, includeEdges: false }]);
   };
 
-  const updateSection = (index: number, field: keyof SectionData, value: any) => {
+  const updateSection = (index: number, field: keyof SectionData, value: string | boolean) => {
     const newSections = [...sections];
-    newSections[index][field] = value;
+    newSections[index][field] = value as never;
     setSections(newSections);
   };
 
@@ -63,20 +62,20 @@ const App: React.FC = () => {
         let css = '';
 
         if (section.includeEdges) {
-          css += `  --color-${section.name}-0: ${chroma.lab([baseLab[0], baseLab[1], baseLab[2]]).hex()};\n`;
-          css += `  --color-${section.name}-1000: ${chroma.lab([100, baseLab[1], baseLab[2]]).hex()};\n`;
+          css += `  --color-${section.name}-0: ${chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()};\n`;
+          css += `  --color-${section.name}-1000: ${chroma.lab(100, baseLab[1], baseLab[2]).hex()};\n`;
         }
 
         for (let i = 1; i <= 9; i++) {
           const lightness = section.inverse ? baseLab[0] - (i - 5) * 10 : baseLab[0] + (i - 5) * 10;
-          const variantColor = chroma.lab([lightness, baseLab[1], baseLab[2]]);
+          const variantColor = chroma.lab(lightness, baseLab[1], baseLab[2]);
           css += `  --color-${section.name}-${i}00: ${variantColor.hex()};\n`;
         }
 
         if (section.generateContrast) {
           for (let i = 1; i <= 9; i++) {
             const lightness = section.inverse ? 100 - (baseLab[0] - (i - 5) * 10) : 100 - (baseLab[0] + (i - 5) * 10);
-            const contrastColor = chroma.lab([lightness, baseLab[1], baseLab[2]]);
+            const contrastColor = chroma.lab(lightness, baseLab[1], baseLab[2]);
             css += `  --color-${section.name}-contrast-${i}00: ${contrastColor.hex()};\n`;
           }
         }
@@ -188,10 +187,10 @@ const App: React.FC = () => {
                     <>
                       <tr>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab([baseLab[0], baseLab[1], baseLab[2]]).hex()} />
+                          <ColorSquare color={chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()} />
                         </td>
                         <td>{`--color-${section.name}-0`}</td>
-                        <td>{chroma.lab([baseLab[0], baseLab[1], baseLab[2]]).hex()}</td>
+                        <td>{chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()}</td>
                       </tr>
                     </>
                   )}
@@ -200,10 +199,10 @@ const App: React.FC = () => {
                     return (
                       <tr key={`${section.name}-${i}`}>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab([lightness, baseLab[1], baseLab[2]]).hex()} />
+                          <ColorSquare color={chroma.lab(lightness, baseLab[1], baseLab[2]).hex()} />
                         </td>
                         <td>{`--color-${section.name}-${i + 1}00`}</td>
-                        <td>{chroma.lab([lightness, baseLab[1], baseLab[2]]).hex()}</td>
+                        <td>{chroma.lab(lightness, baseLab[1], baseLab[2]).hex()}</td>
                       </tr>
                     );
                   })}
@@ -211,10 +210,10 @@ const App: React.FC = () => {
                     <>
                       <tr>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab([100, baseLab[1], baseLab[2]]).hex()} />
+                          <ColorSquare color={chroma.lab(100, baseLab[1], baseLab[2]).hex()} />
                         </td>
                         <td>{`--color-${section.name}-1000`}</td>
-                        <td>{chroma.lab([100, baseLab[1], baseLab[2]]).hex()}</td>
+                        <td>{chroma.lab(100, baseLab[1], baseLab[2]).hex()}</td>
                       </tr>
                     </>
                   )}
@@ -222,10 +221,10 @@ const App: React.FC = () => {
                     <>
                       <tr>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab([100, baseLab[1], baseLab[2]]).hex()} />
+                          <ColorSquare color={chroma.lab(100, baseLab[1], baseLab[2]).hex()} />
                         </td>
                         <td>{`--color-${section.name}-contrast-0`}</td>
-                        <td>{chroma.lab([100, baseLab[1], baseLab[2]]).hex()}</td>
+                        <td>{chroma.lab(100, baseLab[1], baseLab[2]).hex()}</td>
                       </tr>
                     </>
                   )}
@@ -235,10 +234,10 @@ const App: React.FC = () => {
                       return (
                         <tr key={`${section.name}-contrast-${i}`}>
                           <td style={{ width: 0 }}>
-                            <ColorSquare color={chroma.lab([lightness, baseLab[1], baseLab[2]]).hex()} />
+                            <ColorSquare color={chroma.lab(lightness, baseLab[1], baseLab[2]).hex()} />
                           </td>
                           <td>{`--color-${section.name}-contrast-${i + 1}00`}</td>
-                          <td>{chroma.lab([lightness, baseLab[1], baseLab[2]]).hex()}</td>
+                          <td>{chroma.lab(lightness, baseLab[1], baseLab[2]).hex()}</td>
                         </tr>
                       );
                     })}
@@ -246,10 +245,10 @@ const App: React.FC = () => {
                     <>
                       <tr>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab([0, baseLab[1], baseLab[2]]).hex()} />
+                          <ColorSquare color={chroma.lab(0, baseLab[1], baseLab[2]).hex()} />
                         </td>
                         <td>{`--color-${section.name}-contrast-1000`}</td>
-                        <td>{chroma.lab([0, baseLab[1], baseLab[2]]).hex()}</td>
+                        <td>{chroma.lab(0, baseLab[1], baseLab[2]).hex()}</td>
                       </tr>
                     </>
                   )}
