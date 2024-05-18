@@ -9,21 +9,31 @@ interface SectionData {
   inverse: boolean;
 }
 
+interface AppData {
+  sections: SectionData[];
+  colorFormat: 'rgb' | 'hsl' | 'hex';
+  percentageValues: number[];
+}
+
 const App: React.FC = () => {
   const [sections, setSections] = useState<SectionData[]>([]);
   const [colorFormat, setColorFormat] = useState<'rgb' | 'hsl' | 'hex'>('hex');
   const [percentageValues, setPercentageValues] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 5 + i * 10));
 
   useEffect(() => {
-    const savedSections = localStorage.getItem('sections');
-    if (savedSections) {
-      setSections(JSON.parse(savedSections));
+    const savedData = localStorage.getItem('appData');
+    if (savedData) {
+      const { sections, colorFormat, percentageValues }: AppData = JSON.parse(savedData);
+      setSections(sections);
+      setColorFormat(colorFormat);
+      setPercentageValues(percentageValues);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('sections', JSON.stringify(sections));
-  }, [sections]);
+    const appData: AppData = { sections, colorFormat, percentageValues };
+    localStorage.setItem('appData', JSON.stringify(appData));
+  }, [sections, colorFormat, percentageValues]);
 
   const addSection = () => {
     setSections([...sections, { name: '', color: '#ffffff', generateContrast: true, inverse: false }]);
@@ -58,7 +68,7 @@ const App: React.FC = () => {
     return sections
       .map(section => {
         if (!section.name || !section.color) return '';
-        const baseColor = chroma(section.color);
+        const baseColor = chroma(section.color).hsl();
         let css = '';
 
         const formatColor = (color: chroma.Color) => {
@@ -74,15 +84,15 @@ const App: React.FC = () => {
         };
 
         for (let i = 0; i < 9; i++) {
-          const brightness = percentageValues[i] / 100;
-          const variantColor = baseColor.set('lab.l', brightness * 100);
+          const lightness = percentageValues[i];
+          const variantColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
           css += `  --color-${section.name}-${i + 1}00: ${formatColor(variantColor)};\n`;
         }
 
         if (section.generateContrast) {
           for (let i = 0; i < 9; i++) {
-            const brightness = 1 - (percentageValues[i] / 100);
-            const contrastColor = baseColor.set('lab.l', brightness * 100);
+            const lightness = 100 - percentageValues[i];
+            const contrastColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
             css += `  --color-${section.name}-contrast-${i + 1}00: ${formatColor(contrastColor)};\n`;
           }
         }
@@ -99,12 +109,13 @@ const App: React.FC = () => {
   };
 
   const handleExport = () => {
-    const json = JSON.stringify(sections);
+    const appData: AppData = { sections, colorFormat, percentageValues };
+    const json = JSON.stringify(appData);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'sections.json';
+    a.download = 'appData.json';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -115,7 +126,10 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setSections(JSON.parse(result));
+        const { sections, colorFormat, percentageValues }: AppData = JSON.parse(result);
+        setSections(sections);
+        setColorFormat(colorFormat);
+        setPercentageValues(percentageValues);
       };
       reader.readAsText(file);
     }
@@ -181,7 +195,7 @@ const App: React.FC = () => {
       <OutputContainer>
         {sections.map((section, index) => {
           if (!section.name || !section.color) return null;
-          const baseColor = chroma(section.color);
+          const baseColor = chroma(section.color).hsl();
           const formatColor = (color: chroma.Color) => {
             switch (colorFormat) {
               case 'rgb':
@@ -206,8 +220,8 @@ const App: React.FC = () => {
                 </thead>
                 <tbody>
                   {Array.from({ length: 9 }, (_, i) => {
-                    const brightness = percentageValues[i] / 100;
-                    const variantColor = baseColor.set('lab.l', brightness * 100);
+                    const lightness = percentageValues[i];
+                    const variantColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
                     return (
                       <tr key={`${section.name}-${i}`}>
                         <td style={{ width: 0 }}>
@@ -229,8 +243,8 @@ const App: React.FC = () => {
                   })}
                   {section.generateContrast &&
                     Array.from({ length: 9 }, (_, i) => {
-                      const brightness = 1 - (percentageValues[i] / 100);
-                      const contrastColor = baseColor.set('lab.l', brightness * 100);
+                      const lightness = 100 - percentageValues[i];
+                      const contrastColor = chroma.hsl(baseColor[0], baseColor[1], lightness / 100);
                       return (
                         <tr key={`${section.name}-contrast-${i}`}>
                           <td style={{ width: 0 }}>
