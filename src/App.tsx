@@ -7,11 +7,12 @@ interface SectionData {
   color: string;
   generateContrast: boolean;
   inverse: boolean;
-  includeEdges: boolean;
 }
 
 const App: React.FC = () => {
   const [sections, setSections] = useState<SectionData[]>([]);
+  const [colorFormat, setColorFormat] = useState<'rgb' | 'hsl' | 'hex'>('hex');
+  const [percentageValues, setPercentageValues] = useState<number[]>(Array.from({ length: 9 }, (_, i) => 5 + i * 10));
 
   useEffect(() => {
     const savedSections = localStorage.getItem('sections');
@@ -25,7 +26,7 @@ const App: React.FC = () => {
   }, [sections]);
 
   const addSection = () => {
-    setSections([...sections, { name: '', color: '#ffffff', generateContrast: true, inverse: false, includeEdges: false }]);
+    setSections([...sections, { name: '', color: '#ffffff', generateContrast: true, inverse: false }]);
   };
 
   const updateSection = (index: number, field: keyof SectionData, value: string | boolean) => {
@@ -58,25 +59,31 @@ const App: React.FC = () => {
       .map(section => {
         if (!section.name || !section.color) return '';
         const baseColor = chroma(section.color);
-        const baseLab = baseColor.lab();
         let css = '';
 
-        if (section.includeEdges) {
-          css += `  --color-${section.name}-0: ${chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()};\n`;
-          css += `  --color-${section.name}-1000: ${chroma.lab(100, baseLab[1], baseLab[2]).hex()};\n`;
-        }
+        const formatColor = (color: chroma.Color) => {
+          switch (colorFormat) {
+            case 'rgb':
+              return color.css();
+            case 'hsl':
+              return color.css('hsl');
+            case 'hex':
+            default:
+              return color.hex();
+          }
+        };
 
-        for (let i = 1; i <= 9; i++) {
-          const lightness = section.inverse ? baseLab[0] - (i - 5) * 10 : baseLab[0] + (i - 5) * 10;
-          const variantColor = chroma.lab(lightness, baseLab[1], baseLab[2]);
-          css += `  --color-${section.name}-${i}00: ${variantColor.hex()};\n`;
+        for (let i = 0; i < 9; i++) {
+          const brightness = percentageValues[i] / 100;
+          const variantColor = baseColor.set('lab.l', brightness * 100);
+          css += `  --color-${section.name}-${i + 1}00: ${formatColor(variantColor)};\n`;
         }
 
         if (section.generateContrast) {
-          for (let i = 1; i <= 9; i++) {
-            const lightness = section.inverse ? 100 - (baseLab[0] - (i - 5) * 10) : 100 - (baseLab[0] + (i - 5) * 10);
-            const contrastColor = chroma.lab(lightness, baseLab[1], baseLab[2]);
-            css += `  --color-${section.name}-contrast-${i}00: ${contrastColor.hex()};\n`;
+          for (let i = 0; i < 9; i++) {
+            const brightness = 1 - (percentageValues[i] / 100);
+            const contrastColor = baseColor.set('lab.l', brightness * 100);
+            css += `  --color-${section.name}-contrast-${i + 1}00: ${formatColor(contrastColor)};\n`;
           }
         }
         return css;
@@ -114,9 +121,21 @@ const App: React.FC = () => {
     }
   };
 
+  const updatePercentageValue = (index: number, value: number) => {
+    const newValues = [...percentageValues];
+    newValues[index] = value;
+    setPercentageValues(newValues);
+  };
+
   return (
     <Container>
       <Inputs>
+        <Label>Color Format:</Label>
+        <select value={colorFormat} onChange={(e) => setColorFormat(e.target.value as 'rgb' | 'hsl' | 'hex')}>
+          <option value="rgb">RGB</option>
+          <option value="hsl">HSL</option>
+          <option value="hex">HEX</option>
+        </select>
         {sections.map((section, index) => (
           <Section key={index}>
             <Label>Name:</Label>
@@ -148,14 +167,6 @@ const App: React.FC = () => {
               />
               Inverse
             </Label>
-            <Label>
-              <input
-                type="checkbox"
-                checked={section.includeEdges}
-                onChange={e => updateSection(index, 'includeEdges', e.target.checked)}
-              />
-              Include Edges
-            </Label>
             <button onClick={() => removeSection(index)}>Remove</button>
             <button onClick={() => moveSectionUp(index)}>⬆</button>
             <button onClick={() => moveSectionDown(index)}>⬇</button>
@@ -171,7 +182,17 @@ const App: React.FC = () => {
         {sections.map((section, index) => {
           if (!section.name || !section.color) return null;
           const baseColor = chroma(section.color);
-          const baseLab = baseColor.lab();
+          const formatColor = (color: chroma.Color) => {
+            switch (colorFormat) {
+              case 'rgb':
+                return color.css();
+              case 'hsl':
+                return color.css('hsl');
+              case 'hex':
+              default:
+                return color.hex();
+            }
+          };
           return (
             <TableContainer key={index}>
               <Table>
@@ -180,78 +201,55 @@ const App: React.FC = () => {
                     <th style={{ width: 0 }}></th>
                     <th>Variable Name</th>
                     <th>Value</th>
+                    <th>%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {section.includeEdges && (
-                    <>
-                      <tr>
-                        <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()} />
-                        </td>
-                        <td>{`--color-${section.name}-0`}</td>
-                        <td>{chroma.lab(baseLab[0], baseLab[1], baseLab[2]).hex()}</td>
-                      </tr>
-                    </>
-                  )}
                   {Array.from({ length: 9 }, (_, i) => {
-                    const lightness = section.inverse ? baseLab[0] - (i - 4) * 10 : baseLab[0] + (i - 4) * 10;
+                    const brightness = percentageValues[i] / 100;
+                    const variantColor = baseColor.set('lab.l', brightness * 100);
                     return (
                       <tr key={`${section.name}-${i}`}>
                         <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab(lightness, baseLab[1], baseLab[2]).hex()} />
+                          <ColorSquare color={formatColor(variantColor)} />
                         </td>
                         <td>{`--color-${section.name}-${i + 1}00`}</td>
-                        <td>{chroma.lab(lightness, baseLab[1], baseLab[2]).hex()}</td>
+                        <td>{formatColor(variantColor)}</td>
+                        <td>
+                          <input
+                            type="number"
+                            value={percentageValues[i]}
+                            min="0"
+                            max="100"
+                            onChange={e => updatePercentageValue(i, parseFloat(e.target.value))}
+                          />
+                        </td>
                       </tr>
                     );
                   })}
-                  {section.includeEdges && (
-                    <>
-                      <tr>
-                        <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab(100, baseLab[1], baseLab[2]).hex()} />
-                        </td>
-                        <td>{`--color-${section.name}-1000`}</td>
-                        <td>{chroma.lab(100, baseLab[1], baseLab[2]).hex()}</td>
-                      </tr>
-                    </>
-                  )}
-                  {section.generateContrast && section.includeEdges && (
-                    <>
-                      <tr>
-                        <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab(100, baseLab[1], baseLab[2]).hex()} />
-                        </td>
-                        <td>{`--color-${section.name}-contrast-0`}</td>
-                        <td>{chroma.lab(100, baseLab[1], baseLab[2]).hex()}</td>
-                      </tr>
-                    </>
-                  )}
                   {section.generateContrast &&
                     Array.from({ length: 9 }, (_, i) => {
-                      const lightness = !section.inverse ? baseLab[0] - (i - 4) * 10 : baseLab[0] + (i - 4) * 10;
+                      const brightness = 1 - (percentageValues[i] / 100);
+                      const contrastColor = baseColor.set('lab.l', brightness * 100);
                       return (
                         <tr key={`${section.name}-contrast-${i}`}>
                           <td style={{ width: 0 }}>
-                            <ColorSquare color={chroma.lab(lightness, baseLab[1], baseLab[2]).hex()} />
+                            <ColorSquare color={formatColor(contrastColor)} />
                           </td>
                           <td>{`--color-${section.name}-contrast-${i + 1}00`}</td>
-                          <td>{chroma.lab(lightness, baseLab[1], baseLab[2]).hex()}</td>
+                          <td>{formatColor(contrastColor)}</td>
+                          <td>
+                            <input
+                              type="number"
+                              value={percentageValues[i]}
+                              min="0"
+                              max="100"
+                              onChange={e => updatePercentageValue(i, parseFloat(e.target.value))}
+                            />
+                          </td>
                         </tr>
                       );
                     })}
-                  {section.generateContrast && section.includeEdges && (
-                    <>
-                      <tr>
-                        <td style={{ width: 0 }}>
-                          <ColorSquare color={chroma.lab(0, baseLab[1], baseLab[2]).hex()} />
-                        </td>
-                        <td>{`--color-${section.name}-contrast-1000`}</td>
-                        <td>{chroma.lab(0, baseLab[1], baseLab[2]).hex()}</td>
-                      </tr>
-                    </>
-                  )}
                 </tbody>
               </Table>
             </TableContainer>
